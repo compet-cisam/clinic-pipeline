@@ -12,7 +12,7 @@ def main():
     password = os.getenv("PASSWORD_")
 
     with Scraper(
-        url=url, username=username, password=password, headless=False
+        url=url, username=username, password=password, headless=True
     ) as scraper:
         print("Scraper initialized...")
 
