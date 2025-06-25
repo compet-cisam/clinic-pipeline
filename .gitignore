@@ -1,0 +1,15 @@
+.github/instructions/
+.github/prompts/
+
+*.lock
+.venv/
+
+.env
+*.txt
+*.png
+*.html
+
+__pycache__/
+*.xlsx
+*.csv
+*.json
