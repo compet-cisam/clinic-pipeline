@@ -1,4 +1,5 @@
 import re
+from logger_config import get_logger
 
 
 def clean_date_hour(date_hour_text):
@@ -78,6 +79,8 @@ def save_data_to_file(patient_data):
     import json
     from datetime import datetime
 
+    logger = get_logger()
+
     cleaned_data = clean_patient_data(patient_data)
 
     filename = f"patient_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
@@ -85,6 +88,6 @@ def save_data_to_file(patient_data):
     try:
         with open(filename, "w", encoding="utf-8") as f:
             json.dump(cleaned_data, f, indent=2, ensure_ascii=False)
-        print(f"Patient data saved to {filename}")
+        logger.info(f"Patient data saved to {filename}")
     except Exception as e:
-        print(f"Error saving data to file: {e}")
+        logger.error(f"Error saving data to file: {e}")
