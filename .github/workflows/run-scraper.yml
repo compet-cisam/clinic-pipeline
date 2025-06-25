@@ -27,22 +27,50 @@ jobs:
 
       - name: Install system dependencies
         run: |
+          # Add Google Chrome repository
+          wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+
           sudo apt-get update
           sudo apt-get install -y \
             wget \
             gnupg \
             unzip \
             curl \
-            chromium-browser
+            jq \
+            google-chrome-stable
 
       - name: Install ChromeDriver
         run: |
-          CHROMEDRIVER_VERSION=$(curl -sS chromedriver.storage.googleapis.com/LATEST_RELEASE)
-          wget -O /tmp/chromedriver.zip "https://chromedriver.storage.googleapis.com/$CHROMEDRIVER_VERSION/chromedriver_linux64.zip"
-          sudo unzip /tmp/chromedriver.zip -d /usr/local/bin/
+          # Get Chrome version
+          CHROME_VERSION=$(google-chrome --version | grep -oP '\d+\.\d+\.\d+')
+          echo "Chrome version: $CHROME_VERSION"
+
+          # Get the major version (e.g., 137 from 137.0.7151.55)
+          CHROME_MAJOR_VERSION=$(echo $CHROME_VERSION | cut -d. -f1)
+          echo "Chrome major version: $CHROME_MAJOR_VERSION"
+
+          # Get the latest ChromeDriver version for this Chrome major version
+          CHROMEDRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/latest-versions-per-milestone-with-downloads.json" | \
+            jq -r ".milestones.\"$CHROME_MAJOR_VERSION\".version")
+
+          if [ "$CHROMEDRIVER_VERSION" = "null" ] || [ -z "$CHROMEDRIVER_VERSION" ]; then
+            echo "Could not find ChromeDriver version for Chrome $CHROME_MAJOR_VERSION, using latest stable"
+            CHROMEDRIVER_VERSION=$(curl -s "https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions.json" | jq -r ".channels.Stable.version")
+          fi
+
+          echo "ChromeDriver version to install: $CHROMEDRIVER_VERSION"
+
+          # Download and install ChromeDriver
+          CHROMEDRIVER_URL="https://storage.googleapis.com/chrome-for-testing-public/$CHROMEDRIVER_VERSION/linux64/chromedriver-linux64.zip"
+          wget -O /tmp/chromedriver.zip "$CHROMEDRIVER_URL"
+          sudo unzip /tmp/chromedriver.zip -d /tmp/
+          sudo mv /tmp/chromedriver-linux64/chromedriver /usr/local/bin/
           sudo chmod +x /usr/local/bin/chromedriver
+
           # Verify installation
           chromedriver --version
+          google-chrome --version
 
       - name: Install uv
         uses: astral-sh/setup-uv@v4
@@ -58,9 +86,9 @@ jobs:
 
       - name: Set up environment variables
         env:
-          URL: ${{ secrets.SCRAPER_URL }}
-          USERNAME_: ${{ secrets.SCRAPER_USERNAME }}
-          PASSWORD_: ${{ secrets.SCRAPER_PASSWORD }}
+          URL: ${{ secrets.URL }}
+          USERNAME_: ${{ secrets.USERNAME_ }}
+          PASSWORD_: ${{ secrets.PASSWORD_ }}
         run: |
           echo "URL=$URL" >> .env
           echo "USERNAME_=$USERNAME_" >> .env
